@@ -150,6 +150,49 @@ export const setupSockets = (io: Server) => {
       broadcastState();
     });
 
+    socket.on('admin_apply_penalty', async (data: { penaltyAmount: number }) => {
+      if (!currentRoundId) return;
+      
+      // Get all teams that placed a bid in this round
+      const bids = await prisma.bid.findMany({
+        where: { roundId: currentRoundId },
+        select: { teamId: true }
+      });
+      const biddingTeamIds = bids.map(b => b.teamId);
+
+      // Get all active teams that didn't bid
+      const nonBiddingTeams = await prisma.team.findMany({
+        where: { 
+          active: true,
+          id: { notIn: biddingTeamIds }
+        }
+      });
+
+      // Apply penalty to non-bidding teams
+      for (const team of nonBiddingTeams) {
+        const newPoints = team.points - data.penaltyAmount;
+        await prisma.$transaction([
+          prisma.team.update({
+            where: { id: team.id },
+            data: { points: newPoints }
+          }),
+          prisma.scoreLog.create({
+            data: {
+              teamId: team.id,
+              roundId: currentRoundId,
+              type: 'PENALTY',
+              pointsChanged: -data.penaltyAmount,
+              previousPoints: team.points,
+              newPoints: newPoints,
+              reason: 'Did not bid in round'
+            }
+          })
+        ]);
+      }
+      
+      broadcastState();
+    });
+
     // Client Bidding
     socket.on('place_bid', async (data: { teamId: string, amount: number, type: string }) => {
       if (auctionState !== 'BIDDING_OPEN' || !currentRoundId) return;

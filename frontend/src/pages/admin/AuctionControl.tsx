@@ -123,6 +123,34 @@ export default function AuctionControl() {
             )}
           </div>
 
+          {/* Non-Bidding Penalty Widget */}
+          <div className={clsx(
+            "border rounded-2xl p-6 flex flex-col gap-4 transition-all duration-500",
+            auctionState === 'BIDDING_CLOSED' || auctionState === 'COMPLETED' ? 'bg-cyber-rose/10 border-cyber-rose' : 'bg-gray-900 border-gray-800 opacity-50 pointer-events-none'
+          )}>
+            <h3 className="font-bold tracking-wider text-white border-b border-gray-800 pb-2 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-cyber-rose" /> Non-Bidding Penalty
+            </h3>
+            <p className="text-sm text-gray-400">Apply a penalty to all teams that did not place a bid during this round.</p>
+            <div className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1 block">Penalty Amount (PTS)</label>
+                <input type="number" defaultValue={500} id="penaltyAmount" className="w-full bg-gray-950 border border-cyber-rose/50 rounded-lg p-3 text-white focus:outline-none focus:border-cyber-rose" />
+              </div>
+              <button 
+                onClick={() => {
+                  const amt = Number((document.getElementById('penaltyAmount') as HTMLInputElement).value);
+                  if (confirm(`Apply -${amt} PTS penalty to all non-bidding teams?`)) {
+                    socket?.emit('admin_apply_penalty', { penaltyAmount: amt });
+                  }
+                }}
+                className="bg-cyber-rose/20 hover:bg-cyber-rose text-cyber-rose hover:text-black border border-cyber-rose/50 hover:border-cyber-rose px-6 py-3 rounded-lg font-bold transition-all"
+              >
+                Apply Penalty
+              </button>
+            </div>
+          </div>
+
         </div>
 
         {/* Right Column: Question Bank */}
