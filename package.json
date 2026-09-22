@@ -1,0 +1,10 @@
+{
+  "name": "technical-question-challenge",
+  "version": "1.0.0",
+  "description": "V.S.B Engineering College Question Display App",
+  "scripts": {
+    "postinstall": "cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start"
+  }
+}

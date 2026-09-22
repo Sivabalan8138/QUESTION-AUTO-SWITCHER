@@ -1,0 +1,267 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import type { Question } from '../types';
+import Papa from 'papaparse';
+import { Upload, Plus, Trash2, Edit2, ChevronLeft, Save, X, Download } from 'lucide-react';
+
+export default function QuestionManager() {
+  const navigate = useNavigate();
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Question>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin/login');
+      return;
+    }
+    fetchQuestions();
+  }, [navigate]);
+
+  const fetchQuestions = async () => {
+    setLoading(true);
+    const res = await fetch('/api/questions');
+    const data = await res.json();
+    setQuestions(data);
+    setLoading(false);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const parsedQuestions = results.data.map((row: any, index) => ({
+          question: row['Question'],
+          option_a: row['Option A'],
+          option_b: row['Option B'],
+          option_c: row['Option C'],
+          option_d: row['Option D'],
+          time_limit: parseInt(row['Time'] || '10', 10),
+          question_order: questions.length + index + 1
+        }));
+
+        // Validate basic format
+        if (parsedQuestions.some(q => !q.question || !q.option_a)) {
+          alert('Invalid CSV format. Please check the columns.');
+          return;
+        }
+
+        for (const q of parsedQuestions) {
+          await fetch('/api/questions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(q)
+          });
+        }
+        
+        fetchQuestions();
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    });
+  };
+
+  const deleteQuestion = async (id: number) => {
+    if (!window.confirm('Delete this question?')) return;
+    await fetch(`/api/questions/${id}`, { method: 'DELETE' });
+    fetchQuestions();
+  };
+
+  const deleteAllQuestions = async () => {
+    if (!window.confirm('Are you absolutely sure you want to delete ALL questions? This cannot be undone.')) return;
+    if (!window.confirm('Please confirm again: Delete ALL questions?')) return;
+    await fetch('/api/questions', { method: 'DELETE' });
+    fetchQuestions();
+  };
+
+  const startEdit = (q: Question) => {
+    setEditingId(q.id);
+    setEditForm(q);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    await fetch(`/api/questions/${editingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm)
+    });
+    setEditingId(null);
+    fetchQuestions();
+  };
+
+  const addNew = async () => {
+    const newQ = {
+      question: 'New Question',
+      option_a: 'Option A',
+      option_b: 'Option B',
+      option_c: 'Option C',
+      option_d: 'Option D',
+      time_limit: 10,
+      question_order: questions.length + 1
+    };
+    await fetch('/api/questions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newQ)
+    });
+    fetchQuestions();
+  };
+
+  const downloadTemplate = () => {
+    const csvContent = "data:text/csv;charset=utf-8,Question,Option A,Option B,Option C,Option D,Time\nSample Question?,A,B,C,D,10\n";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "question_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (loading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Loading...</div>;
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-300 flex flex-col">
+      <nav className="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link to="/admin" className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+            <ChevronLeft className="w-5 h-5 text-sky-400" />
+          </Link>
+          <h1 className="text-xl font-bold tracking-wide text-white">Question Management</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <input 
+            type="file" 
+            accept=".csv" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Import CSV
+          </button>
+          <button 
+            onClick={downloadTemplate}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Template
+          </button>
+          <button 
+            onClick={addNew}
+            className="flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-sky-900/30"
+          >
+            <Plus className="w-4 h-4" />
+            Add Question
+          </button>
+          {questions.length > 0 && (
+            <button 
+              onClick={deleteAllQuestions}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-red-900/30 ml-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
+            </button>
+          )}
+        </div>
+      </nav>
+
+      <div className="flex-1 p-6 max-w-6xl mx-auto w-full">
+        <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-900/50 text-slate-400 text-sm uppercase tracking-wider">
+                  <th className="p-4 font-semibold w-16">#</th>
+                  <th className="p-4 font-semibold">Question Details</th>
+                  <th className="p-4 font-semibold w-24">Time</th>
+                  <th className="p-4 font-semibold w-32">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/50">
+                {questions.map((q, idx) => (
+                  <tr key={q.id} className="hover:bg-slate-700/30 transition-colors">
+                    <td className="p-4 text-slate-500 font-medium">{idx + 1}</td>
+                    <td className="p-4">
+                      {editingId === q.id ? (
+                        <div className="space-y-3">
+                          <input 
+                            value={editForm.question || ''} 
+                            onChange={e => setEditForm({...editForm, question: e.target.value})}
+                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-lg font-medium"
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <input value={editForm.option_a || ''} onChange={e => setEditForm({...editForm, option_a: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option A" />
+                            <input value={editForm.option_b || ''} onChange={e => setEditForm({...editForm, option_b: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option B" />
+                            <input value={editForm.option_c || ''} onChange={e => setEditForm({...editForm, option_c: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option C" />
+                            <input value={editForm.option_d || ''} onChange={e => setEditForm({...editForm, option_d: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option D" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-white text-lg font-medium mb-2">{q.question}</div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-400">
+                            <div><span className="text-slate-500 mr-2">A:</span>{q.option_a}</div>
+                            <div><span className="text-slate-500 mr-2">B:</span>{q.option_b}</div>
+                            <div><span className="text-slate-500 mr-2">C:</span>{q.option_c}</div>
+                            <div><span className="text-slate-500 mr-2">D:</span>{q.option_d}</div>
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {editingId === q.id ? (
+                        <input 
+                          type="number"
+                          value={editForm.time_limit || 10} 
+                          onChange={e => setEditForm({...editForm, time_limit: parseInt(e.target.value, 10)})}
+                          className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center"
+                        />
+                      ) : (
+                        <div className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-slate-900 text-sky-400 font-medium text-sm">
+                          {q.time_limit}s
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {editingId === q.id ? (
+                        <div className="flex gap-2">
+                          <button onClick={saveEdit} className="p-2 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 rounded transition-colors"><Save className="w-4 h-4" /></button>
+                          <button onClick={() => setEditingId(null)} className="p-2 bg-slate-600/20 text-slate-400 hover:bg-slate-600/40 rounded transition-colors"><X className="w-4 h-4" /></button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button onClick={() => startEdit(q)} className="p-2 bg-sky-600/20 text-sky-400 hover:bg-sky-600/40 rounded transition-colors"><Edit2 className="w-4 h-4" /></button>
+                          <button onClick={() => deleteQuestion(q.id)} className="p-2 bg-red-600/20 text-red-400 hover:bg-red-600/40 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                
+                {questions.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-slate-500">
+                      No questions found. Add one or import from CSV.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
