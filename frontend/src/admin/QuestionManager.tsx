@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import type { Question } from '../types';
 import Papa from 'papaparse';
+import * as mammoth from 'mammoth';
 import { Upload, Plus, Trash2, Edit2, ChevronLeft, Save, X, Download } from 'lucide-react';
 
 export default function QuestionManager() {
@@ -29,27 +30,83 @@ export default function QuestionManager() {
     setLoading(false);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    Papa.parse(file, {
+    if (file.name.endsWith('.docx')) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        const html = result.value;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        const rows = doc.querySelectorAll('tr');
+        if (rows.length < 2) {
+          alert('Invalid Word Document. Please ensure it contains a table with S.NO, Emoj, Time columns.');
+          return;
+        }
+
+        const parsedQuestions = [];
+        for (let i = 1; i < rows.length; i++) {
+          const cells = rows[i].querySelectorAll('td, th');
+          if (cells.length >= 3) {
+            const question = cells[1].textContent?.trim() || '';
+            const timeStr = cells[2].textContent?.trim() || '';
+            const timeLimit = parseInt(timeStr.replace(/[^0-9]/g, ''), 10) || 20;
+            
+            if (question) {
+              parsedQuestions.push({
+                question,
+                option_a: '',
+                option_b: '',
+                option_c: '',
+                option_d: '',
+                time_limit: timeLimit,
+                question_order: questions.length + parsedQuestions.length + 1
+              });
+            }
+          }
+        }
+
+        if (parsedQuestions.length === 0) {
+          alert('No valid questions found in the Word document.');
+          return;
+        }
+
+        for (const q of parsedQuestions) {
+          await fetch('/api/questions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(q)
+          });
+        }
+        
+        fetchQuestions();
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (error) {
+        console.error("Error parsing Word document:", error);
+        alert("Error parsing Word document. Please make sure it's a valid .docx file.");
+      }
+    } else {
+      Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
         const parsedQuestions = results.data.map((row: any, index) => ({
           question: row['Question'],
-          option_a: row['Option A'],
-          option_b: row['Option B'],
-          option_c: row['Option C'],
-          option_d: row['Option D'],
+          option_a: row['Option A'] || '',
+          option_b: row['Option B'] || '',
+          option_c: row['Option C'] || '',
+          option_d: row['Option D'] || '',
           time_limit: parseInt(row['Time'] || '10', 10),
           question_order: questions.length + index + 1
         }));
 
         // Validate basic format
-        if (parsedQuestions.some(q => !q.question || !q.option_a)) {
-          alert('Invalid CSV format. Please check the columns.');
+        if (parsedQuestions.some(q => !q.question)) {
+          alert('Invalid CSV format. Please ensure all rows have a Question.');
           return;
         }
 
@@ -65,6 +122,7 @@ export default function QuestionManager() {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     });
+    }
   };
 
   const deleteQuestion = async (id: number) => {
@@ -114,16 +172,7 @@ export default function QuestionManager() {
     fetchQuestions();
   };
 
-  const downloadTemplate = () => {
-    const csvContent = "data:text/csv;charset=utf-8,Question,Option A,Option B,Option C,Option D,Time\nSample Question?,A,B,C,D,10\n";
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "question_template.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+
 
   if (loading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Loading...</div>;
 
@@ -139,7 +188,7 @@ export default function QuestionManager() {
         <div className="flex items-center gap-4">
           <input 
             type="file" 
-            accept=".csv" 
+            accept=".csv,.docx" 
             ref={fileInputRef} 
             onChange={handleFileUpload} 
             className="hidden" 
@@ -149,15 +198,24 @@ export default function QuestionManager() {
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
           >
             <Upload className="w-4 h-4" />
-            Import CSV
+            Import CSV / Word
           </button>
-          <button 
-            onClick={downloadTemplate}
+          <a 
+            href="/excel_template.csv"
+            download="excel_template.csv"
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
           >
             <Download className="w-4 h-4" />
-            Template
-          </button>
+            Excel Template
+          </a>
+          <a 
+            href="/word_template.docx"
+            download="word_template.docx"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Word Template
+          </a>
           <button 
             onClick={addNew}
             className="flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-sky-900/30"

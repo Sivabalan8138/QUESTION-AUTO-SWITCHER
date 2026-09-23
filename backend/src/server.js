@@ -75,6 +75,13 @@ async function nextQuestion() {
   if (!activity.current_question_id) return;
   
   const currentQuestion = await db.get('SELECT * FROM questions WHERE id = ?', activity.current_question_id);
+  if (!currentQuestion) {
+    pauseTimer();
+    await db.run('UPDATE activity SET current_question_id = NULL, status = "idle" WHERE id = 1');
+    await broadcastState();
+    return;
+  }
+  
   const nextQ = await db.get('SELECT * FROM questions WHERE question_order > ? ORDER BY question_order ASC LIMIT 1', currentQuestion.question_order);
   
   if (nextQ) {
@@ -99,7 +106,7 @@ io.on('connection', (socket) => {
     const db = getDB();
     const activity = await db.get('SELECT * FROM activity WHERE id = 1');
     
-    if (activity.status === 'idle') {
+    if (activity.status === 'idle' || activity.status === 'finished') {
       const firstQ = await db.get('SELECT * FROM questions ORDER BY question_order ASC LIMIT 1');
       if (firstQ) {
         await db.run('UPDATE activity SET status = "running", current_question_id = ?, timer_state = ? WHERE id = 1', firstQ.id, firstQ.time_limit);

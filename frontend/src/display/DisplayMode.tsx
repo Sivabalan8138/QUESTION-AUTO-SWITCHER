@@ -113,6 +113,7 @@ export default function DisplayMode() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 flex-shrink-0">
           {['A', 'B', 'C', 'D'].map((optLabel) => {
             const optValue = currentQuestion[`option_${optLabel.toLowerCase()}` as keyof Question];
+            if (!optValue) return null;
             return (
               <div 
                 key={optLabel} 
