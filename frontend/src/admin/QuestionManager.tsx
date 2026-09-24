@@ -94,13 +94,14 @@ export default function QuestionManager() {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const parsedQuestions = results.data.map((row: any, index) => ({
+        const parsedQuestions = results.data.map((row: any, index: number) => ({
           question: row['Question'],
           option_a: row['Option A'] || '',
           option_b: row['Option B'] || '',
           option_c: row['Option C'] || '',
           option_d: row['Option D'] || '',
           time_limit: parseInt(row['Time'] || '10', 10),
+          image_url: row['Image URL'] || '',
           question_order: questions.length + index + 1
         }));
 
@@ -162,14 +163,47 @@ export default function QuestionManager() {
       option_c: 'Option C',
       option_d: 'Option D',
       time_limit: 10,
+      image_url: '',
       question_order: questions.length + 1
     };
-    await fetch('/api/questions', {
+    const res = await fetch('/api/questions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newQ)
     });
-    fetchQuestions();
+    const data = await res.json();
+    await fetchQuestions();
+    
+    // Start editing the new question instantly
+    setEditingId(data.id);
+    setEditForm({ ...newQ, id: data.id });
+    
+    // Scroll to the bottom to see it
+    setTimeout(() => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }, 100);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEditForm({ ...editForm, image_url: data.url });
+      } else {
+        alert('Upload failed: ' + data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Upload failed');
+    }
   };
 
 
@@ -259,6 +293,15 @@ export default function QuestionManager() {
                             onChange={e => setEditForm({...editForm, question: e.target.value})}
                             className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-lg font-medium"
                           />
+                          <div className="flex items-center gap-4">
+                            {editForm.image_url && (
+                              <img src={editForm.image_url} alt="Question" className="h-16 w-16 object-cover rounded" />
+                            )}
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-700 file:text-white hover:file:bg-slate-600" />
+                            {editForm.image_url && (
+                              <button onClick={() => setEditForm({ ...editForm, image_url: '' })} className="text-red-400 hover:text-red-300 text-sm">Remove Image</button>
+                            )}
+                          </div>
                           <div className="grid grid-cols-2 gap-3">
                             <input value={editForm.option_a || ''} onChange={e => setEditForm({...editForm, option_a: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option A" />
                             <input value={editForm.option_b || ''} onChange={e => setEditForm({...editForm, option_b: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option B" />
@@ -267,13 +310,18 @@ export default function QuestionManager() {
                           </div>
                         </div>
                       ) : (
-                        <div>
-                          <div className="text-white text-lg font-medium mb-2">{q.question}</div>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-400">
-                            <div><span className="text-slate-500 mr-2">A:</span>{q.option_a}</div>
-                            <div><span className="text-slate-500 mr-2">B:</span>{q.option_b}</div>
-                            <div><span className="text-slate-500 mr-2">C:</span>{q.option_c}</div>
-                            <div><span className="text-slate-500 mr-2">D:</span>{q.option_d}</div>
+                        <div className="flex gap-4">
+                          {q.image_url && (
+                            <img src={q.image_url} alt="Question" className="h-20 w-20 object-cover rounded shadow" />
+                          )}
+                          <div className="flex-1">
+                            <div className="text-white text-lg font-medium mb-2">{q.question}</div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-400">
+                              <div><span className="text-slate-500 mr-2">A:</span>{q.option_a}</div>
+                              <div><span className="text-slate-500 mr-2">B:</span>{q.option_b}</div>
+                              <div><span className="text-slate-500 mr-2">C:</span>{q.option_c}</div>
+                              <div><span className="text-slate-500 mr-2">D:</span>{q.option_d}</div>
+                            </div>
                           </div>
                         </div>
                       )}

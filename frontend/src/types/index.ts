@@ -7,6 +7,7 @@ export interface Question {
   option_d: string;
   time_limit: number;
   question_order: number;
+  image_url?: string;
 }
 
 export interface ActivityState {

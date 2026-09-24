@@ -1,0 +1,3 @@
+@echo off
+echo Opening Display Mode in Full Screen Kiosk Mode...
+start chrome --kiosk "http://localhost:5173/display"

@@ -6,6 +6,22 @@ const { initDB, getDB } = require('./database');
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
+const multer = require('multer');
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+const upload = multer({ storage: storage });
 
 const app = express();
 app.use(cors());
@@ -188,21 +204,21 @@ app.get('/api/questions', async (req, res) => {
 });
 
 app.post('/api/questions', async (req, res) => {
-  const { question, option_a, option_b, option_c, option_d, time_limit, question_order } = req.body;
+  const { question, option_a, option_b, option_c, option_d, time_limit, question_order, image_url } = req.body;
   const db = getDB();
   const result = await db.run(
-    'INSERT INTO questions (question, option_a, option_b, option_c, option_d, time_limit, question_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [question, option_a, option_b, option_c, option_d, time_limit, question_order]
+    'INSERT INTO questions (question, option_a, option_b, option_c, option_d, time_limit, question_order, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [question, option_a, option_b, option_c, option_d, time_limit, question_order, image_url]
   );
   res.json({ id: result.lastID });
 });
 
 app.put('/api/questions/:id', async (req, res) => {
-  const { question, option_a, option_b, option_c, option_d, time_limit, question_order } = req.body;
+  const { question, option_a, option_b, option_c, option_d, time_limit, question_order, image_url } = req.body;
   const db = getDB();
   await db.run(
-    'UPDATE questions SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, time_limit = ?, question_order = ? WHERE id = ?',
-    [question, option_a, option_b, option_c, option_d, time_limit, question_order, req.params.id]
+    'UPDATE questions SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, time_limit = ?, question_order = ?, image_url = ? WHERE id = ?',
+    [question, option_a, option_b, option_c, option_d, time_limit, question_order, image_url, req.params.id]
   );
   res.json({ success: true });
 });
@@ -240,7 +256,17 @@ app.post('/api/login', (req, res) => {
   }
 });
 
+app.post('/api/upload', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
+  res.json({ success: true, url: '/uploads/' + req.file.filename });
+});
+
 const PORT = process.env.PORT || 3001;
+
+// Serve uploads
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 // Serve frontend build
 const frontendPath = path.join(__dirname, '../../frontend/dist');

@@ -175,11 +175,22 @@ export default function AdminPanel() {
               <h2 className="text-3xl font-bold text-white mb-8 leading-relaxed">
                 {currentQuestion.question}
               </h2>
+
+              {currentQuestion.image_url && (
+                <div className="flex justify-center mb-6">
+                  <img 
+                    src={currentQuestion.image_url} 
+                    alt="Question" 
+                    className="max-h-48 rounded-xl shadow-xl border-2 border-slate-700 object-contain"
+                  />
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-4 mt-auto">
                 {['A', 'B', 'C', 'D'].map((optLabel) => {
                   const key = `option_${optLabel.toLowerCase()}` as keyof Question;
                   const optValue = currentQuestion[key];
+                  if (!optValue) return null;
                   return (
                     <div key={optLabel} className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex items-center">
                       <div className="w-8 h-8 rounded bg-slate-800 text-slate-400 flex items-center justify-center font-bold mr-4 text-sm">

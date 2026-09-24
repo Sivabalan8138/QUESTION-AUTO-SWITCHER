@@ -22,6 +22,7 @@ async function initDB() {
       option_d TEXT NOT NULL,
       time_limit INTEGER NOT NULL,
       question_order INTEGER NOT NULL,
+      image_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -34,6 +35,13 @@ async function initDB() {
     );
   `);
 
+  // Handle migration for existing databases
+  try {
+    await db.exec(`ALTER TABLE questions ADD COLUMN image_url TEXT`);
+  } catch (e) {
+    // Column might already exist
+  }
+
   // Insert default activity state if not exists
   const activity = await db.get('SELECT * FROM activity WHERE id = 1');
   if (!activity) {
@@ -44,21 +52,21 @@ async function initDB() {
   const count = await db.get('SELECT COUNT(*) as count FROM questions');
   if (count.count === 0) {
     const samples = [
-      ['Which device is used to protect a circuit from excessive current?', 'Capacitor', 'Transformer', 'Fuse', 'Resistor', 10, 1],
-      ['What is the SI unit of resistance?', 'Volt', 'Ohm', 'Ampere', 'Watt', 10, 2],
-      ['Which law relates voltage, current and resistance?', "Faraday's Law", "Ohm's Law", "Kirchhoff's Law", "Lenz's Law", 15, 3],
-      ['What is the function of a transformer?', 'Convert AC to DC', 'Step up/down voltage', 'Store charge', 'Generate power', 10, 4],
-      ['Which component stores electrical energy in an electric field?', 'Inductor', 'Resistor', 'Capacitor', 'Diode', 10, 5],
-      ['What is the unit of electrical power?', 'Joule', 'Watt', 'Volt', 'Ampere', 10, 6],
-      ['Which device converts electrical energy into mechanical energy?', 'Generator', 'Motor', 'Transformer', 'Battery', 10, 7],
-      ['What is the purpose of a circuit breaker?', 'Increase voltage', 'Protect circuit from overload', 'Convert AC to DC', 'Store energy', 15, 8],
-      ['Which semiconductor device is commonly used for switching?', 'Resistor', 'Capacitor', 'Transistor', 'Inductor', 10, 9],
-      ['What is the frequency of standard AC supply in India?', '50 Hz', '60 Hz', '100 Hz', '120 Hz', 10, 10]
+      ['Which device is used to protect a circuit from excessive current?', 'Capacitor', 'Transformer', 'Fuse', 'Resistor', 10, 1, null],
+      ['What is the SI unit of resistance?', 'Volt', 'Ohm', 'Ampere', 'Watt', 10, 2, null],
+      ['Which law relates voltage, current and resistance?', "Faraday's Law", "Ohm's Law", "Kirchhoff's Law", "Lenz's Law", 15, 3, null],
+      ['What is the function of a transformer?', 'Convert AC to DC', 'Step up/down voltage', 'Store charge', 'Generate power', 10, 4, null],
+      ['Which component stores electrical energy in an electric field?', 'Inductor', 'Resistor', 'Capacitor', 'Diode', 10, 5, null],
+      ['What is the unit of electrical power?', 'Joule', 'Watt', 'Volt', 'Ampere', 10, 6, null],
+      ['Which device converts electrical energy into mechanical energy?', 'Generator', 'Motor', 'Transformer', 'Battery', 10, 7, null],
+      ['What is the purpose of a circuit breaker?', 'Increase voltage', 'Protect circuit from overload', 'Convert AC to DC', 'Store energy', 15, 8, null],
+      ['Which semiconductor device is commonly used for switching?', 'Resistor', 'Capacitor', 'Transistor', 'Inductor', 10, 9, null],
+      ['What is the frequency of standard AC supply in India?', '50 Hz', '60 Hz', '100 Hz', '120 Hz', 10, 10, null]
     ];
 
     for (const sample of samples) {
       await db.run(
-        'INSERT INTO questions (question, option_a, option_b, option_c, option_d, time_limit, question_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO questions (question, option_a, option_b, option_c, option_d, time_limit, question_order, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         sample
       );
     }
