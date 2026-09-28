@@ -140,7 +140,7 @@ app.post('/api/command', async (req, res) => {
       case 'admin:pause': {
         // Calculate remaining time and save it
         if (activity.status === 'running') {
-          const dbNow = await sql`SELECT CURRENT_TIMESTAMP as now, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at)) as elapsed`;
+          const dbNow = await sql`SELECT CURRENT_TIMESTAMP as now, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at)) as elapsed FROM activity WHERE id = 1`;
           const elapsed = dbNow.rows[0].elapsed || 0;
           const timeLeft = Math.max(0, activity.time_limit - elapsed);
           await sql`UPDATE activity SET status = 'paused', paused_time_left = ${timeLeft}`;
