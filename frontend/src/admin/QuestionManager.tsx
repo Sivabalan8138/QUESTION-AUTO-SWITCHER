@@ -13,6 +13,14 @@ export default function QuestionManager() {
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const fetchQuestions = async () => {
+    setLoading(true);
+    const res = await fetch('/api/questions');
+    const data = await res.json();
+    setQuestions(data);
+    setLoading(false);
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
@@ -21,14 +29,6 @@ export default function QuestionManager() {
     }
     fetchQuestions();
   }, [navigate]);
-
-  const fetchQuestions = async () => {
-    setLoading(true);
-    const res = await fetch('/api/questions');
-    const data = await res.json();
-    setQuestions(data);
-    setLoading(false);
-  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -293,11 +293,11 @@ export default function QuestionManager() {
                             onChange={e => setEditForm({...editForm, question: e.target.value})}
                             className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-lg font-medium"
                           />
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-4 text-sm text-slate-400">
                             {editForm.image_url && (
                               <img src={editForm.image_url} alt="Question" className="h-16 w-16 object-cover rounded" />
                             )}
-                            <input type="file" accept="image/*" onChange={handleImageUpload} className="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-700 file:text-white hover:file:bg-slate-600" />
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-700 file:text-white hover:file:bg-slate-600" />
                             {editForm.image_url && (
                               <button onClick={() => setEditForm({ ...editForm, image_url: '' })} className="text-red-400 hover:text-red-300 text-sm">Remove Image</button>
                             )}

@@ -25,6 +25,7 @@ export default function AdminLogin() {
         setError('Invalid credentials');
       }
     } catch (err) {
+      console.error(err);
       setError('Connection error');
     }
   };
@@ -59,7 +60,7 @@ export default function AdminLogin() {
                   type="text" 
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
                   placeholder="admin"
                   required
                 />
@@ -76,7 +77,7 @@ export default function AdminLogin() {
                   type="password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
                   placeholder="••••••••"
                   required
                 />

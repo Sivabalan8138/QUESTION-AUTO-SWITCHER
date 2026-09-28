@@ -3,7 +3,7 @@ import { Zap, MonitorPlay, Settings } from 'lucide-react';
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-900 to-slate-800">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-linear-to-br from-slate-900 to-slate-800">
       <div className="max-w-2xl w-full text-center space-y-8">
         
         {/* Branding */}
