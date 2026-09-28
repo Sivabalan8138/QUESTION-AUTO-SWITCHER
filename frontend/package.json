@@ -1,14 +1,10 @@
 {
-  "name": "technical-question-challenge",
-  "private": true,
+  "name": "technical-question-challenge-frontend",
   "version": "1.0.0",
-  "description": "V.S.B Engineering College Question Display App",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "start": "node api/index.js",
-    "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -19,11 +15,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
-    "tailwindcss": "^4.3.3",
-    "@vercel/postgres": "^0.10.0",
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "multer": "^2.4.0"
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
@@ -34,8 +26,5 @@
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
-  },
-  "engines": {
-    "node": "24.x"
   }
 }

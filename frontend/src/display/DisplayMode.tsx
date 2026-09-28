@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useEffect, useState } from 'react';
 import type { AppState, Question } from '../types';
 
@@ -8,7 +9,7 @@ export default function DisplayMode() {
   useEffect(() => {
     const fetchState = async () => {
       try {
-        const res = await fetch('/api/state');
+        const res = await fetch(`${API_BASE_URL}/api/state`);
         if (res.ok) {
           const state = await res.json();
           setAppState(state);
@@ -155,7 +156,7 @@ export default function DisplayMode() {
         {currentQuestion.image_url && (
           <div className="flex-1 flex justify-center items-center mb-6 min-h-0">
             <img 
-              src={currentQuestion.image_url} 
+              src={currentQuestion.image_url?.startsWith('http') ? currentQuestion.image_url : `${API_BASE_URL}${currentQuestion.image_url}`} 
               alt="Question" 
               className="max-w-full max-h-[50vh] rounded-2xl shadow-2xl border-4 border-slate-700 object-contain"
             />

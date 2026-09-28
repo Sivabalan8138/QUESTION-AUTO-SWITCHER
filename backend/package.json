@@ -1,0 +1,14 @@
+{
+  "name": "technical-question-challenge-backend",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node api/index.js"
+  },
+  "dependencies": {
+    "@vercel/postgres": "^0.10.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "multer": "^2.4.0"
+  }
+}

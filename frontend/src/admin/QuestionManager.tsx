@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import type { Question } from '../types';
@@ -15,7 +16,7 @@ export default function QuestionManager() {
 
   const fetchQuestions = async () => {
     setLoading(true);
-    const res = await fetch('/api/questions');
+    const res = await fetch(`${API_BASE_URL}/api/questions`);
     const data = await res.json();
     setQuestions(data);
     setLoading(false);
@@ -76,7 +77,7 @@ export default function QuestionManager() {
         }
 
         for (const q of parsedQuestions) {
-          await fetch('/api/questions', {
+          await fetch(`${API_BASE_URL}/api/questions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(q)
@@ -112,7 +113,7 @@ export default function QuestionManager() {
         }
 
         for (const q of parsedQuestions) {
-          await fetch('/api/questions', {
+          await fetch(`${API_BASE_URL}/api/questions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(q)
@@ -128,14 +129,14 @@ export default function QuestionManager() {
 
   const deleteQuestion = async (id: number) => {
     if (!window.confirm('Delete this question?')) return;
-    await fetch(`/api/questions/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/api/questions/${id}`, { method: 'DELETE' });
     fetchQuestions();
   };
 
   const deleteAllQuestions = async () => {
     if (!window.confirm('Are you absolutely sure you want to delete ALL questions? This cannot be undone.')) return;
     if (!window.confirm('Please confirm again: Delete ALL questions?')) return;
-    await fetch('/api/questions', { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/api/questions`, { method: 'DELETE' });
     fetchQuestions();
   };
 
@@ -146,7 +147,7 @@ export default function QuestionManager() {
 
   const saveEdit = async () => {
     if (!editingId) return;
-    await fetch(`/api/questions/${editingId}`, {
+    await fetch(`${API_BASE_URL}/api/questions/${editingId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editForm)
@@ -166,7 +167,7 @@ export default function QuestionManager() {
       image_url: '',
       question_order: questions.length + 1
     };
-    const res = await fetch('/api/questions', {
+    const res = await fetch(`${API_BASE_URL}/api/questions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newQ)
@@ -190,7 +191,7 @@ export default function QuestionManager() {
     const formData = new FormData();
     formData.append('image', file);
     try {
-      const res = await fetch('/api/upload', {
+      const res = await fetch(`${API_BASE_URL}/api/upload`, {
         method: 'POST',
         body: formData
       });
@@ -312,7 +313,7 @@ export default function QuestionManager() {
                       ) : (
                         <div className="flex gap-4">
                           {q.image_url && (
-                            <img src={q.image_url} alt="Question" className="h-20 w-20 object-cover rounded shadow" />
+                            <img src={q.image_url?.startsWith('http') ? q.image_url : `${API_BASE_URL}${q.image_url}`} alt="Question" className="h-20 w-20 object-cover rounded shadow" />
                           )}
                           <div className="flex-1">
                             <div className="text-white text-lg font-medium mb-2">{q.question}</div>

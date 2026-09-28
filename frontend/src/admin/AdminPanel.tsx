@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Power, Settings, List, LayoutDashboard } from 'lucide-react';
@@ -18,7 +19,7 @@ export default function AdminPanel() {
 
     const fetchState = async () => {
       try {
-        const res = await fetch('/api/state');
+        const res = await fetch(`${API_BASE_URL}/api/state`);
         if (res.ok) {
           const state = await res.json();
           setAppState(state);
@@ -56,13 +57,13 @@ export default function AdminPanel() {
     }
     
     try {
-      await fetch('/api/command', {
+      await fetch(`${API_BASE_URL}/api/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: cmd })
       });
       // Optionally fetch state immediately after command
-      const res = await fetch('/api/state');
+      const res = await fetch(`${API_BASE_URL}/api/state`);
       if (res.ok) setAppState(await res.json());
     } catch (err) {
       console.error("Command failed", err);
@@ -203,7 +204,7 @@ export default function AdminPanel() {
               {currentQuestion.image_url && (
                 <div className="flex justify-center mb-6">
                   <img 
-                    src={currentQuestion.image_url} 
+                    src={currentQuestion.image_url?.startsWith('http') ? currentQuestion.image_url : `${API_BASE_URL}${currentQuestion.image_url}`} 
                     alt="Question" 
                     className="max-h-48 rounded-xl shadow-xl border-2 border-slate-700 object-contain"
                   />
