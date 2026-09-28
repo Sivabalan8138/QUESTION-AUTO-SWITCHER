@@ -1,3 +1,6 @@
+if (process.env.POSTGRES_DATABASE_URL && !process.env.POSTGRES_URL) {
+  process.env.POSTGRES_URL = process.env.POSTGRES_DATABASE_URL;
+}
 const isVercel = !!(process.env.POSTGRES_URL || process.env.VERCEL);
 
 let sqlWrapper;
