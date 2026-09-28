@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Power, Settings, List, LayoutDashboard } from 'lucide-react';
 import type { AppState, Question } from '../types';
