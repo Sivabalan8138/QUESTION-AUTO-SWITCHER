@@ -257,7 +257,19 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
   }
-  res.json({ success: true, url: '/uploads/' + req.file.filename });
+  try {
+    const fileData = fs.readFileSync(req.file.path);
+    const base64Data = fileData.toString('base64');
+    const mimeType = req.file.mimetype || 'image/png';
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
+    
+    fs.unlinkSync(req.file.path); // Clean up temp file
+    
+    res.json({ success: true, url: dataUrl });
+  } catch (err) {
+    console.error("Base64 conversion error:", err);
+    res.status(500).json({ success: false, message: 'Failed to process image' });
+  }
 });
 
 // Serve uploads
