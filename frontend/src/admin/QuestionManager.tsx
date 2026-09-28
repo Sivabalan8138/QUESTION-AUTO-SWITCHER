@@ -304,10 +304,10 @@ export default function QuestionManager() {
                             )}
                           </div>
                           <div className="grid grid-cols-2 gap-3">
-                            <input value={editForm.option_a || ''} onChange={e => setEditForm({...editForm, option_a: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option A" />
-                            <input value={editForm.option_b || ''} onChange={e => setEditForm({...editForm, option_b: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option B" />
-                            <input value={editForm.option_c || ''} onChange={e => setEditForm({...editForm, option_c: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option C" />
-                            <input value={editForm.option_d || ''} onChange={e => setEditForm({...editForm, option_d: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Option D" />
+                            <input value={editForm.option_a || ''} onChange={e => setEditForm({...editForm, option_a: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white" placeholder="Option A" />
+                            <input value={editForm.option_b || ''} onChange={e => setEditForm({...editForm, option_b: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white" placeholder="Option B" />
+                            <input value={editForm.option_c || ''} onChange={e => setEditForm({...editForm, option_c: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white" placeholder="Option C" />
+                            <input value={editForm.option_d || ''} onChange={e => setEditForm({...editForm, option_d: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white" placeholder="Option D" />
                           </div>
                         </div>
                       ) : (
@@ -333,7 +333,7 @@ export default function QuestionManager() {
                           type="number"
                           value={editForm.time_limit || 10} 
                           onChange={e => setEditForm({...editForm, time_limit: parseInt(e.target.value, 10)})}
-                          className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center"
+                          className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-white"
                         />
                       ) : (
                         <div className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-slate-900 text-sky-400 font-medium text-sm">

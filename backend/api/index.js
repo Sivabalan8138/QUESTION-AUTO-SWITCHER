@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { initDB } = require('./database');
-const { sql } = require('@vercel/postgres');
+const { initDB, sql } = require('./database');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
@@ -52,15 +51,53 @@ app.get('/api/state', async (req, res) => {
     let currentQuestion = null;
     let currentQuestionNumber = 0;
     
+    // Disable caching completely
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+
+    // Format started_at to guarantee UTC parsing
+    if (activity.started_at && typeof activity.started_at === 'string' && !activity.started_at.includes('T')) {
+      activity.started_at = activity.started_at.replace(' ', 'T') + 'Z';
+    }
+
+    // Auto-switch logic
+    if (activity.status === 'running' && activity.started_at) {
+      const startedAt = new Date(activity.started_at).getTime();
+      const serverNow = Date.now();
+      const elapsed = Math.floor((serverNow - startedAt) / 1000);
+      
+      if (elapsed >= activity.time_limit) {
+        const currRes = await sql`SELECT * FROM questions WHERE id = ${activity.current_question_id}`;
+        if (currRes.rows.length > 0) {
+          const curr = currRes.rows[0];
+          const nextRes = await sql`SELECT * FROM questions WHERE question_order > ${curr.question_order} ORDER BY question_order ASC LIMIT 1`;
+          if (nextRes.rows.length > 0) {
+            const nextQ = nextRes.rows[0];
+            await sql`UPDATE activity SET status = 'running', current_question_id = ${nextQ.id}, time_limit = ${nextQ.time_limit}, started_at = CURRENT_TIMESTAMP, paused_time_left = ${nextQ.time_limit}`;
+            const newActivityRes = await sql`SELECT * FROM activity WHERE id = 1`;
+            Object.assign(activity, newActivityRes.rows[0]);
+            if (activity.started_at && typeof activity.started_at === 'string' && !activity.started_at.includes('T')) {
+              activity.started_at = activity.started_at.replace(' ', 'T') + 'Z';
+            }
+          } else {
+            await sql`UPDATE activity SET status = 'finished'`;
+            activity.status = 'finished';
+          }
+        }
+      }
+    }
+    
     if (activity.current_question_id) {
       const qRes = await sql`SELECT * FROM questions WHERE id = ${activity.current_question_id}`;
       currentQuestion = qRes.rows[0];
       
-      const numRes = await sql`SELECT COUNT(*) FROM questions WHERE question_order <= ${currentQuestion.question_order}`;
+      const numRes = await sql`SELECT COUNT(*) as count FROM questions WHERE question_order <= ${currentQuestion.question_order}`;
       currentQuestionNumber = parseInt(numRes.rows[0].count);
     }
 
-    const totalRes = await sql`SELECT COUNT(*) FROM questions`;
+    const totalRes = await sql`SELECT COUNT(*) as count FROM questions`;
     const totalQuestions = parseInt(totalRes.rows[0].count);
 
     res.json({
