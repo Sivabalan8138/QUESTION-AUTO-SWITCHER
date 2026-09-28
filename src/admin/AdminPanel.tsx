@@ -43,7 +43,7 @@ export default function AdminPanel() {
     };
 
     fetchState();
-    const interval = setInterval(fetchState, 1000);
+    const interval = setInterval(fetchState, 100);
 
     return () => clearInterval(interval);
   }, [navigate]);

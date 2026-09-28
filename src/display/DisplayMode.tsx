@@ -31,7 +31,7 @@ export default function DisplayMode() {
     };
 
     fetchState();
-    const interval = setInterval(fetchState, 1000);
+    const interval = setInterval(fetchState, 100);
 
     return () => clearInterval(interval);
   }, []);
