@@ -1,28 +1,39 @@
-import { useEffect, useState, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { useEffect, useState } from 'react';
 import type { AppState, Question } from '../types';
 
 export default function DisplayMode() {
   const [appState, setAppState] = useState<AppState | null>(null);
   const [timer, setTimer] = useState<number>(0);
-  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io();
-    socketRef.current = socket;
+    const fetchState = async () => {
+      try {
+        const res = await fetch('/api/state');
+        if (res.ok) {
+          const state = await res.json();
+          setAppState(state);
 
-    socket.on('display:state_update', (state: AppState) => {
-      setAppState(state);
-      setTimer(state.activity.timer_state);
-    });
-
-    socket.on('timer:tick', (timeLeft: number) => {
-      setTimer(timeLeft);
-    });
-
-    return () => {
-      socket.disconnect();
+          if (state.activity.status === 'running' && state.activity.started_at) {
+            const startedAt = new Date(state.activity.started_at).getTime();
+            const serverNow = state.activity.server_now;
+            const elapsed = Math.floor((serverNow - startedAt) / 1000);
+            const timeLeft = Math.max(0, state.activity.time_limit - elapsed);
+            setTimer(timeLeft);
+          } else if (state.activity.status === 'paused') {
+            setTimer(state.activity.paused_time_left || 0);
+          } else if (state.activity.status === 'idle' || state.activity.status === 'finished') {
+            setTimer(0);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching state:", err);
+      }
     };
+
+    fetchState();
+    const interval = setInterval(fetchState, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const enterFullscreen = () => {
@@ -121,7 +132,6 @@ export default function DisplayMode() {
             </div>
           </div>
           
-          {/* Timer moved to top right */}
           <div className={`flex flex-col items-end justify-center bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 backdrop-blur-sm ${isUrgent ? 'animate-urgent' : ''}`}>
             <div className={`text-5xl md:text-7xl font-black leading-none tabular-nums tracking-tighter ${isUrgent ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'text-sky-400 drop-shadow-[0_0_20px_rgba(14,165,233,0.3)]'}`}>
               {timer.toString().padStart(2, '0')}
@@ -141,7 +151,7 @@ export default function DisplayMode() {
           </div>
         )}
 
-        {/* Question Image (Moved below text) */}
+        {/* Question Image */}
         {currentQuestion.image_url && (
           <div className="flex-1 flex justify-center items-center mb-6 min-h-0">
             <img 
@@ -170,8 +180,6 @@ export default function DisplayMode() {
             );
           })}
         </div>
-
-        {/* Removed bottom timer */}
       </main>
 
       {/* Floating Full Screen Button */}

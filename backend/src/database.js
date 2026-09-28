@@ -1,20 +1,10 @@
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
-const path = require('path');
-
-const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'database.sqlite');
-
-let db;
+const { sql } = require('@vercel/postgres');
 
 async function initDB() {
-  db = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
-
-  await db.exec(`
+  // Create Questions Table
+  await sql`
     CREATE TABLE IF NOT EXISTS questions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       question TEXT NOT NULL,
       option_a TEXT NOT NULL,
       option_b TEXT NOT NULL,
@@ -23,34 +13,33 @@ async function initDB() {
       time_limit INTEGER NOT NULL,
       question_order INTEGER NOT NULL,
       image_url TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+  `;
 
+  // Create Activity Table
+  await sql`
     CREATE TABLE IF NOT EXISTS activity (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       name TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'idle',
       current_question_id INTEGER,
-      timer_state INTEGER
+      time_limit INTEGER DEFAULT 0,
+      paused_time_left INTEGER DEFAULT 0,
+      started_at TIMESTAMP
     );
-  `);
-
-  // Handle migration for existing databases
-  try {
-    await db.exec(`ALTER TABLE questions ADD COLUMN image_url TEXT`);
-  } catch (e) {
-    // Column might already exist
-  }
+  `;
 
   // Insert default activity state if not exists
-  const activity = await db.get('SELECT * FROM activity WHERE id = 1');
-  if (!activity) {
-    await db.run('INSERT INTO activity (id, name, status, current_question_id, timer_state) VALUES (1, "TECHNICAL QUESTION CHALLENGE", "idle", NULL, 0)');
+  const activityCountRes = await sql`SELECT COUNT(*) FROM activity WHERE id = 1`;
+  if (parseInt(activityCountRes.rows[0].count) === 0) {
+    await sql`INSERT INTO activity (id, name, status, current_question_id, time_limit, paused_time_left, started_at) 
+              VALUES (1, 'TECHNICAL QUESTION CHALLENGE', 'idle', NULL, 0, 0, NULL)`;
   }
 
   // Insert sample questions if table is empty
-  const count = await db.get('SELECT COUNT(*) as count FROM questions');
-  if (count.count === 0) {
+  const countRes = await sql`SELECT COUNT(*) FROM questions`;
+  if (parseInt(countRes.rows[0].count) === 0) {
     const samples = [
       ['Which device is used to protect a circuit from excessive current?', 'Capacitor', 'Transformer', 'Fuse', 'Resistor', 10, 1, null],
       ['What is the SI unit of resistance?', 'Volt', 'Ohm', 'Ampere', 'Watt', 10, 2, null],
@@ -65,21 +54,12 @@ async function initDB() {
     ];
 
     for (const sample of samples) {
-      await db.run(
-        'INSERT INTO questions (question, option_a, option_b, option_c, option_d, time_limit, question_order, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        sample
-      );
+      await sql`
+        INSERT INTO questions (question, option_a, option_b, option_c, option_d, time_limit, question_order, image_url) 
+        VALUES (${sample[0]}, ${sample[1]}, ${sample[2]}, ${sample[3]}, ${sample[4]}, ${sample[5]}, ${sample[6]}, ${sample[7]})
+      `;
     }
   }
-
-  return db;
 }
 
-function getDB() {
-  if (!db) {
-    throw new Error('Database not initialized');
-  }
-  return db;
-}
-
-module.exports = { initDB, getDB };
+module.exports = { initDB };

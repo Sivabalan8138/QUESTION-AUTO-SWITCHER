@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { io, Socket } from 'socket.io-client';
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Power, Settings, List, LayoutDashboard } from 'lucide-react';
 import type { AppState, Question } from '../types';
 
@@ -8,8 +7,8 @@ export default function AdminPanel() {
   const navigate = useNavigate();
   const [appState, setAppState] = useState<AppState | null>(null);
   const [timer, setTimer] = useState<number>(0);
-  const socketRef = useRef<Socket | null>(null);
 
+  // Poll for state every 1 second
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
@@ -17,31 +16,56 @@ export default function AdminPanel() {
       return;
     }
 
-    const socket = io();
-    socketRef.current = socket;
-
-    socket.on('display:state_update', (state: AppState) => {
-      setAppState(state);
-      setTimer(state.activity.timer_state);
-    });
-
-    socket.on('timer:tick', (timeLeft: number) => {
-      setTimer(timeLeft);
-    });
-
-    return () => {
-      socket.disconnect();
+    const fetchState = async () => {
+      try {
+        const res = await fetch('/api/state');
+        if (res.ok) {
+          const state = await res.json();
+          setAppState(state);
+          
+          // Calculate timer locally based on state
+          if (state.activity.status === 'running' && state.activity.started_at) {
+            const startedAt = new Date(state.activity.started_at).getTime();
+            const serverNow = state.activity.server_now;
+            // The time elapsed since it started on the server
+            const elapsed = Math.floor((serverNow - startedAt) / 1000);
+            const timeLeft = Math.max(0, state.activity.time_limit - elapsed);
+            setTimer(timeLeft);
+          } else if (state.activity.status === 'paused') {
+            setTimer(state.activity.paused_time_left || 0);
+          } else if (state.activity.status === 'idle' || state.activity.status === 'finished') {
+            setTimer(0);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching state:", err);
+      }
     };
+
+    fetchState();
+    const interval = setInterval(fetchState, 1000);
+
+    return () => clearInterval(interval);
   }, [navigate]);
 
-  const emitCommand = (cmd: string) => {
-    if (socketRef.current) {
-      if (cmd === 'admin:restart_activity' || cmd === 'admin:finish') {
-        if (!window.confirm('Are you sure you want to perform this action?')) {
-          return;
-        }
+  const emitCommand = async (cmd: string) => {
+    if (cmd === 'admin:restart_activity' || cmd === 'admin:finish') {
+      if (!window.confirm('Are you sure you want to perform this action?')) {
+        return;
       }
-      socketRef.current.emit(cmd);
+    }
+    
+    try {
+      await fetch('/api/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: cmd })
+      });
+      // Optionally fetch state immediately after command
+      const res = await fetch('/api/state');
+      if (res.ok) setAppState(await res.json());
+    } catch (err) {
+      console.error("Command failed", err);
     }
   };
 
