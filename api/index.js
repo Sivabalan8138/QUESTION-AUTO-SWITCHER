@@ -227,7 +227,7 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 app.use('/uploads', express.static('/tmp/uploads'));
 
 // Serve frontend build (For local dev only; Vercel handles static routing directly)
-const frontendPath = path.join(__dirname, '../../frontend/dist');
+const frontendPath = path.join(__dirname, '../dist');
 app.use(express.static(frontendPath));
 
 // Catch-all route to serve index.html for React Router (For local dev only)
