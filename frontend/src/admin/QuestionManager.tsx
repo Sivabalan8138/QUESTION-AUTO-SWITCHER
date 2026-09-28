@@ -13,6 +13,59 @@ export default function QuestionManager() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBulkImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    if (!window.confirm(`Found ${files.length} files. Ensure your images are named like "1.png", "2.jpg", matching the Question numbers. Proceed with bulk upload?`)) return;
+    
+    setLoading(true);
+    let successCount = 0;
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith('image/')) continue;
+      
+      // Get the number from filename (e.g. "1.png" -> 1)
+      const nameParts = file.name.split('.');
+      const qNum = parseInt(nameParts[0], 10);
+      
+      if (isNaN(qNum)) continue;
+      
+      const questionTarget = questions.find(q => q.question_order === qNum);
+      if (!questionTarget) continue;
+      
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          // Update the question in DB
+          await fetch(`${API_BASE_URL}/api/questions/${questionTarget.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...questionTarget, image_url: data.url })
+          });
+          successCount++;
+        }
+      } catch (err) {
+        console.error("Failed to upload bulk image:", file.name, err);
+      }
+    }
+    
+    await fetchQuestions();
+    setLoading(false);
+    if (folderInputRef.current) folderInputRef.current.value = '';
+    alert(`Bulk image upload complete! Successfully attached ${successCount} images.`);
+  };
 
   const fetchQuestions = async () => {
     setLoading(true);
@@ -228,6 +281,23 @@ export default function QuestionManager() {
             onChange={handleFileUpload} 
             className="hidden" 
           />
+          <input 
+            type="file" 
+            ref={folderInputRef} 
+            onChange={handleBulkImageUpload} 
+            className="hidden" 
+            // @ts-expect-error webkitdirectory is non-standard but supported
+            webkitdirectory="true"
+            directory=""
+            multiple
+          />
+          <button 
+            onClick={() => folderInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Bulk Images Folder
+          </button>
           <button 
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
