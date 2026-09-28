@@ -1,7 +1,12 @@
-const { sql } = require('@vercel/postgres');
+let sql;
+try {
+  sql = require('@vercel/postgres').sql;
+} catch (e) {
+  console.error("Vercel Postgres failed to initialize.", e.message);
+  sql = () => { throw new Error("Database not connected."); };
+}
 
 async function initDB() {
-  // Create Questions Table
   await sql`
     CREATE TABLE IF NOT EXISTS questions (
       id SERIAL PRIMARY KEY,
