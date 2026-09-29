@@ -16,26 +16,30 @@ export default function QuestionManager() {
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   const handleBulkImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const rawFiles = e.target.files;
+    if (!rawFiles || rawFiles.length === 0) return;
     
-    if (!window.confirm(`Found ${files.length} files. Ensure your images are named like "1.png", "2.jpg", matching the Question numbers. Proceed with bulk upload?`)) return;
+    // Convert FileList to Array, filter images, and sort alphabetically by name
+    const imageFiles = Array.from(rawFiles)
+      .filter(file => file.type.startsWith('image/'))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+    if (imageFiles.length === 0) {
+      alert("No image files found in the selected folder.");
+      return;
+    }
+    
+    if (!window.confirm(`Found ${imageFiles.length} image files.\n\nThey will be assigned to your questions sequentially (in alphabetical order of their filenames).\n\nProceed with bulk upload?`)) return;
     
     setLoading(true);
     let successCount = 0;
     
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (!file.type.startsWith('image/')) continue;
-      
-      // Get the number from filename (e.g. "1.png" -> 1)
-      const nameParts = file.name.split('.');
-      const qNum = parseInt(nameParts[0], 10);
-      
-      if (isNaN(qNum)) continue;
-      
-      const questionTarget = questions.find(q => q.question_order === qNum);
-      if (!questionTarget) continue;
+    // Sort questions by order to ensure we attach them correctly
+    const sortedQuestions = [...questions].sort((a, b) => a.question_order - b.question_order);
+    
+    for (let i = 0; i < Math.min(imageFiles.length, sortedQuestions.length); i++) {
+      const file = imageFiles[i];
+      const questionTarget = sortedQuestions[i];
       
       const formData = new FormData();
       formData.append('image', file);
