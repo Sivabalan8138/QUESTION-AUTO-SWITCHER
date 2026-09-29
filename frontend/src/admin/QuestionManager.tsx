@@ -39,21 +39,42 @@ export default function QuestionManager() {
     // Process all images instantly in parallel directly in the browser
     const uploadPromises = [];
     
-    for (let i = 0; i < Math.min(imageFiles.length, sortedQuestions.length); i++) {
+    for (let i = 0; i < imageFiles.length; i++) {
       const file = imageFiles[i];
-      const questionTarget = sortedQuestions[i];
+      const questionTarget = sortedQuestions[i]; // Might be undefined if we run out of questions
       
       const promise = new Promise<void>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = async () => {
           const base64String = reader.result as string;
           try {
-            const res = await fetch(`${API_BASE_URL}/api/questions/${questionTarget.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...questionTarget, image_url: base64String })
-            });
-            if (res.ok) successCount++;
+            if (questionTarget) {
+              // Update existing question
+              const res = await fetch(`${API_BASE_URL}/api/questions/${questionTarget.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...questionTarget, image_url: base64String })
+              });
+              if (res.ok) successCount++;
+            } else {
+              // Create a brand new question
+              const newQ = {
+                question: `Image Question ${i + 1}`,
+                option_a: 'Option A',
+                option_b: 'Option B',
+                option_c: 'Option C',
+                option_d: 'Option D',
+                time_limit: 10,
+                image_url: base64String,
+                question_order: sortedQuestions.length + (i - sortedQuestions.length) + 1
+              };
+              const res = await fetch(`${API_BASE_URL}/api/questions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newQ)
+              });
+              if (res.ok) successCount++;
+            }
           } catch (err) {
             console.error("Failed to upload bulk image:", file.name, err);
           }
