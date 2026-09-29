@@ -34,36 +34,37 @@ export default function QuestionManager() {
     setLoading(true);
     let successCount = 0;
     
-    // Sort questions by order to ensure we attach them correctly
     const sortedQuestions = [...questions].sort((a, b) => a.question_order - b.question_order);
+    
+    // Process all images instantly in parallel directly in the browser
+    const uploadPromises = [];
     
     for (let i = 0; i < Math.min(imageFiles.length, sortedQuestions.length); i++) {
       const file = imageFiles[i];
       const questionTarget = sortedQuestions[i];
       
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/upload`, {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-          // Update the question in DB
-          await fetch(`${API_BASE_URL}/api/questions/${questionTarget.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...questionTarget, image_url: data.url })
-          });
-          successCount++;
-        }
-      } catch (err) {
-        console.error("Failed to upload bulk image:", file.name, err);
-      }
+      const promise = new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64String = reader.result as string;
+          try {
+            const res = await fetch(`${API_BASE_URL}/api/questions/${questionTarget.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...questionTarget, image_url: base64String })
+            });
+            if (res.ok) successCount++;
+          } catch (err) {
+            console.error("Failed to upload bulk image:", file.name, err);
+          }
+          resolve();
+        };
+        reader.readAsDataURL(file);
+      });
+      uploadPromises.push(promise);
     }
+    
+    await Promise.all(uploadPromises);
     
     await fetchQuestions();
     setLoading(false);
